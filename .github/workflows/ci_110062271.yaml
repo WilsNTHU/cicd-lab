@@ -1,0 +1,58 @@
+name: CI 110062271
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  ci:
+    name: Typecheck, Prettier, and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Prettier check
+        run: npm run format:check
+
+      - name: Run tests and generate test report
+        run: |
+          mkdir -p reports
+          npm test -- --reporter=default --reporter=github-actions --reporter=junit --outputFile.junit=reports/vitest-junit.xml
+
+      - name: Upload JUnit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-junit-report
+          path: reports/vitest-junit.xml
+          if-no-files-found: warn
+
+      - name: Add CI summary
+        if: always()
+        run: |
+          echo "## CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check Item | Command | Purpose |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript typecheck | npm run typecheck | Check TypeScript type errors |" >> $GITHUB_STEP_SUMMARY
+          echo "| Prettier check | npm run format:check | Check code formatting |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit tests | npm test | Run Vitest test cases |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Vitest uses the github-actions reporter to show test results in the GitHub Actions job summary." >> $GITHUB_STEP_SUMMARY
+          echo "The JUnit XML test report is also uploaded as an artifact named vitest-junit-report." >> $GITHUB_STEP_SUMMARY
